@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Migration Analytics WebMap</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+
+  <!-- Chart.js and plugins -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+  <!-- Chart Styling -->
+  <style>
+    #districtModal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      animation: modalFadeIn 0.4s ease-out;
+    }
+    
+    .modal-content {
+      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+      margin: 3% auto;
+      padding: 2.5rem;
+      border-radius: 20px;
+      width: 95%;
+      height: 95%;
+      max-width: 1600px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.1);
+      animation: modalSlideIn 0.5s ease-out;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .modal-content::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .modal-content h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+      color: #2d3748;
+      font-weight: 700;
+      font-size: 2rem;
+      font-family: 'Poppins', sans-serif;
+    }
+    
+    .chart-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      gap: 2rem;
+      margin-top: 1.5rem;
+    }
+    
+    canvas {
+      width: 700px;
+      height: 700px;
+      max-width: 100%;
+      max-height: 100%;
+      filter: drop-shadow(0 10px 25px rgba(0,0,0,0.1));
+    }
+    #closeModal {
+      position: absolute;
+      top: 20px;
+      right: 25px;
+      font-size: 28px;
+      font-weight: 300;
+      cursor: pointer;
+      color: #718096;
+      transition: all 0.3s ease;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.05);
+    }
+    
+    #closeModal:hover {
+      color: #e53e3e;
+      background: rgba(229, 62, 62, 0.1);
+      transform: rotate(90deg);
+    }
+    
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes modalSlideIn {
+      from { 
+        opacity: 0; 
+        transform: scale(0.9) translateY(-20px); 
+      }
+      to { 
+        opacity: 1; 
+        transform: scale(1) translateY(0); 
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="modern-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="fas fa-globe-americas"></i>
+      </div>
+      <h1><strong>MIGRATION MIRROR</strong></h1>
+      <div class="header-subtitle">
+      A dynamic web map that visualizes human migration patterns, offering insights into population movements, trends, and shifts across regions over time.
+
+      </div>
+    </div>
+  </header>
+
+  <div id="container">
+    <div id="sidebar" class="modern-sidebar">
+      <div class="sidebar-header">
+        <i class="fas fa-layer-group"></i>
+        <h3><strong>DATA LAYERS</strong></h3>
+      </div>
+      
+      <div class="layer-section">
+        <p class="section-description">Select a migration-related layer to view the relevant data on the map</p>
+        <form id="layerControls" class="modern-form">
+          <label class="radio-container">
+            <input type="radio" name="layer" value="layer1" checked>
+            <span class="checkmark"></span>
+            <span class="label-text">
+              <i class="fas fa-home"></i>
+              INTERNAL RETENTION RATE
+            </span>
+          </label>
+          
+          <label class="radio-container">
+            <input type="radio" name="layer" value="layer2">
+            <span class="checkmark"></span>
+            <span class="label-text">
+              <i class="fas fa-arrow-right"></i>
+              IN-MIGRATION DENSITY
+            </span>
+          </label>
+          
+          <label class="radio-container">
+            <input type="radio" name="layer" value="layer3">
+            <span class="checkmark"></span>
+            <span class="label-text">
+              <i class="fas fa-arrow-left"></i>
+              OUT-MIGRATION DENSITY
+            </span>
+          </label>
+          
+          <label class="radio-container">
+            <input type="radio" name="layer" value="layer4">
+            <span class="checkmark"></span>
+            <span class="label-text">
+              <i class="fas fa-exchange-alt"></i>
+              NET MIGRATION DENSITY
+            </span>
+          </label>
+        </form>
+      </div>
+
+      <!-- District Selection -->
+      <div id="districtSelector" class="section-card">
+        <div class="section-header">
+          <i class="fas fa-info-circle"></i>
+          <span>NEED MORE INFORMATION?</span>
+        </div>
+        <p class="section-subtitle">Simply select the district to view data</p>
+        <select id="districtDropdown" class="modern-select">
+          <option value="" disabled selected>Select a district</option>
+          <option>Colombo</option>
+          <option>Gampaha</option>
+          <option>Kalutara</option>
+          <option>Kandy</option>
+          <option>Matale</option>
+          <option>Nuwara Eliya</option>
+          <option>Galle</option>
+          <option>Matara</option>
+          <option>Hambantota</option>
+          <option>Jaffna</option>
+          <option>Mannar</option>
+          <option>Vavuniya</option>
+          <option>Mullaitivu</option>
+          <option>Kilinochchi</option>
+          <option>Batticaloa</option>
+          <option>Ampara</option>
+          <option>Trincomalee</option>
+          <option>Kurunegala</option>
+          <option>Puttalam</option>
+          <option>Anuradhapura</option>
+          <option>Polonnaruwa</option>
+          <option>Badulla</option>
+          <option>Monaragala</option>
+          <option>Ratnapura</option>
+          <option>Kegalle</option>
+        </select>
+      </div>
+
+  <!-- User Information Form Modal -->
+      <div id="userFormModal" class="modal" style="display:none;">
+        <div class="modal-content">
+          <span class="close" id="closeFormModal">&times;</span>
+          <h2><i class="fas fa-user-edit"></i> USER INFORMATION</h2>
+<p style="text-align: center; margin-top: -1rem; margin-bottom: 1.5rem; color: #4a5568; font-size: 1rem; font-family: 'Poppins', sans-serif;">
+  To explore detailed infrastructure data, kindly complete the form below.
+</p>
+          <form id="userInfoForm" class="modern-form" style="display: grid; gap: 1rem;">
+
+            <!-- Home District -->
+            <label>
+              Home District:
+              <select id="homeDistrict" required>
+                <option value="" disabled selected>Select District</option>
+                <option>Colombo</option><option>Gampaha</option><option>Kalutara</option>
+                <option>Kandy</option><option>Matale</option><option>Nuwara Eliya</option>
+                <option>Galle</option><option>Matara</option><option>Hambantota</option>
+                <option>Jaffna</option><option>Kilinochchi</option><option>Mannar</option>
+                <option>Vavuniya</option><option>Mullaitivu</option><option>Batticaloa</option>
+                <option>Ampara</option><option>Trincomalee</option><option>Kurunegala</option>
+                <option>Puttalam</option><option>Anuradhapura</option><option>Polonnaruwa</option>
+                <option>Badulla</option><option>Monaragala</option><option>Ratnapura</option><option>Kegalle</option>
+              </select>
+            </label>
+
+            <!-- DSD of the Home District -->
+            <label>
+              DSD of the Home District:
+              <select id="homeGND" required>
+                <option value="" disabled selected>Select DSD</option>
+              </select>
+            </label>
+
+            <!-- Occupation -->
+            <label>
+              Occupation:
+              <input type="text" id="occupation" placeholder="Enter Occupation" required />
+            </label>
+
+            <!-- Duration of stay in Home District -->
+            <label>
+              Years in Home District:
+              <select id="duration" required>
+                <option value="" disabled selected>Select Range</option>
+                <option>Less than 5</option>
+                <option>5-10</option>
+                <option>10-15</option>
+                <option>15-20</option>
+                <option>Above 20</option>
+              </select>
+            </label>
+
+            <!-- Migration Destination -->
+            <label>
+              Migration Destination (District):
+              <select id="destDistrict" required>
+                <option value="" disabled selected>Select District</option>
+                <option>Colombo</option><option>Gampaha</option><option>Kalutara</option>
+                <option>Kandy</option><option>Matale</option><option>Nuwara Eliya</option>
+                <option>Galle</option><option>Matara</option><option>Hambantota</option>
+                <option>Jaffna</option><option>Kilinochchi</option><option>Mannar</option>
+                <option>Vavuniya</option><option>Mullaitivu</option><option>Batticaloa</option>
+                <option>Ampara</option><option>Trincomalee</option><option>Kurunegala</option>
+                <option>Puttalam</option><option>Anuradhapura</option><option>Polonnaruwa</option>
+                <option>Badulla</option><option>Monaragala</option><option>Ratnapura</option><option>Kegalle</option>
+              </select>
+            </label>
+
+            <!-- DSD of the Migration Destination -->
+            <label>
+              DSD of the Migration Destination:
+              <select id="destGND" required>
+                <option value="" disabled selected>Select DSD</option>
+              </select>
+            </label>
+
+            <!-- Reason for Migration -->
+            <label>
+              Reason for Migration:
+              <select id="reasonSelect" required>
+                <option value="" disabled selected>Select Reason</option>
+                <option>Marriage</option>
+                <option>Employment</option>
+                <option>Education</option>
+                <option>Displacement</option>
+                <option>Resettlement after Displacement</option>
+                <option>Development Projects</option>
+                <option>Requirement of Family Member</option>
+                <option>Other</option>
+              </select>
+            </label>
+
+            <!-- Optional 'Other' Text Field -->
+            <label id="otherReasonLabel" style="display:none;">
+              Please specify the reason:
+              <input type="text" id="otherReasonInput" placeholder="Enter your reason" />
+            </label>
+
+            <!-- Number of family members -->
+            <div class="form-group">
+              <label for="familyMembers">Number of Family Members</label>
+              <select id="familyMembers" name="familyMembers" required>
+                <option value="">-- Select --</option>
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                <option value="10">10</option><option value="above10">Above 10</option>
+              </select>
+            </div>
+
+            <!-- Number of people below age 5 -->
+            <div class="form-group">
+              <label for="belowAge5">Number of People Below Age 5</label>
+              <select id="belowAge5" name="belowAge5" required>
+                <option value="">-- Select --</option>
+                <option value="0">0</option><option value="1">1</option>
+                <option value="2">2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option>
+              </select>
+            </div>
+
+            <!-- Number of people between age 5–18 -->
+            <div class="form-group">
+              <label for="age5to18">Number of People Aged 5–18</label>
+              <select id="age5to18" name="age5to18" required>
+                <option value="">-- Select --</option>
+                <option value="0">0</option><option value="1">1</option>
+                <option value="2">2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option>
+              </select>
+            </div>
+
+            <!-- Number of people between age 18–59 -->
+            <div class="form-group">
+              <label for="age18to59">Number of People Aged 18–59</label>
+              <select id="age18to59" name="age18to59" required>
+                <option value="">-- Select --</option>
+                <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                <option value="6">6</option><option value="7">7</option><option value="8">8</option>
+                <option value="9">9</option><option value="10">10</option>
+              </select>
+            </div>
+
+            <!-- Number of people above age 59 -->
+            <div class="form-group">
+              <label for="aboveAge59">Number of People Above Age 59</label>
+              <select id="aboveAge59" name="aboveAge59" required>
+                <option value="">-- Select --</option>
+                <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                <option value="6">6</option><option value="7">7</option><option value="8">8</option>
+                <option value="9">9</option><option value="10">10</option>
+              </select>
+            </div>
+
+            <button type="button" class="modern-button primary" onclick="submitButton()">Submit</button>
+          </form>
+
+          <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
+
+          <form id="googleform" action="https://docs.google.com/forms/u/0/d/e/1FAIpQLSc1Y2ejyk0VQHPVKtzIils6O9vkRH4w81dTUn__Icv06oBfkA/formResponse" method="POST" target="hidden_iframe" style="display:none;">
+              <input type="hidden" name="entry.280921555" id="google_homeDistrict">
+              <input type="hidden" name="entry.1499442566" id="google_homeGND">
+              <input type="hidden" name="entry.1895412770" id="google_occupation">
+              <input type="hidden" name="entry.479437240" id="google_duration">
+              <input type="hidden" name="entry.1578466722" id="google_destDistrict">
+              <input type="hidden" name="entry.324470633" id="google_destGND">
+              <input type="hidden" name="entry.511101522" id="google_reasonSelect">
+              <input type="hidden" name="entry.2060270028" id="google_familyMembers">
+              <input type="hidden" name="entry.1441925795" id="google_belowAge5">
+              <input type="hidden" name="entry.242698124" id="google_age5to18">
+              <input type="hidden" name="entry.1773553811" id="google_age18to59">
+              <input type="hidden" name="entry.2123638611" id="google_aboveAge59">
+          </form>
+        </div>
+      </div>
+
+      <div class="infrastructure-section section-card">
+        <div class="section-header">
+          <i class="fas fa-building"></i>
+          <span>INFRASTRUCTURE DATA</span>
+        </div>
+        <p class="section-subtitle">Access detailed infrastructure information</p>
+        <button id="infoButton" class="modern-button primary">
+          <i class="fas fa-map-marked-alt"></i>
+          View Infrastructure
+        </button>
+      </div>
+
+      <div id="legend" class="legend-card">
+        <div class="legend-header">
+          <i class="fas fa-palette"></i>
+          <h3>LEGEND</h3>
+        </div>
+        <div id="legendContent" class="legend-content"></div>
+      </div>
+    </div>
+
+    <div id="map-container" class="map-wrapper">
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <!-- Modal for Pie Charts -->
+  <div id="districtModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="closeModal">&times;</span>
+      <h2>
+        <i class="fas fa-chart-pie"></i>
+        MORE DATA ON MIGRATION
+      </h2>
+      <div class="chart-container">
+        <div class="chart-wrapper">
+          <canvas id="reasonsChart"></canvas>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="durationChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="modern-footer">
+    <div class="footer-content">
+      <div class="footer-info">
+        <i class="fas fa-university"></i>
+        <span>2025 | Department of Town & Country Planning, University of Moratuwa</span>
+      </div>
+      <div class="footer-tech">
+        <i class="fas fa-code"></i>
+        <span>PL3508 - Advanced GIS and Remote Sensing for Planning</span>
+      </div>
+    </div>
+  </footer>
+
+    <script>
+
+    const gndData = {
+      "Colombo": ["Colombo", "Dehiwala", "Homagama", "Kaduwela", "Kesbewa", "Kolonnawa", "Maharagama", "Moratuwa", "Padukka", "Ratmalana", "Seethawaka", "Sri Jayawardenepura‑Kotte", "Thimbirigasyaya"],
+      "Gampaha": ["Attanagalla", "Biyagama", "Divulapitiya", "Dompe", "Gampaha", "Ja‑Ela", "Katana", "Kelaniya", "Mahara", "Minuwangoda", "Mirigama", "Negombo", "Wattala"],
+      "Kalutara": ["Agalawatta", "Bandaragama", "Beruwala", "Bulathsinhala", "Dodangoda", "Horana", "Ingiriya", "Kalutara", "Madurawela", "Matugama", "Millaniya", "Palindanuwara", "Panadura", "Walallavita"],
+      "Kandy": ["Akurana", "Delthota", "Doluwa", "Ganga Ihala Korale", "Harispattuwa", "Hatharaliyadda", "Kandy", "Kundasale", "Medadumbara", "Minipe", "Panvila", "Pasbage Korale", "Pathadumbara", "Pathahewaheta", "Poojapitiya", "Thumpane", "Udadumbara", "Udapalatha", "Udunuwara", "Yatinuwara"],
+      "Matale": ["Ambanganga Korale", "Dambulla", "Galewela", "Laggala‑Pallegama", "Matale", "Naula", "Pallepola", "Rattota", "Ukuwela", "Wilgamuwa", "Yatawatta"],
+      "Nuwara Eliya": ["Ambagamuwa", "Hanguranketha", "Kothmale", "Nuwara Eliya", "Walapane"],
+      "Galle": ["Akmeemana", "Ambalangoda", "Baddegama", "Balapitiya", "Benthota", "Bope‑Poddala", "Elpitiya", "Galle (Four Gravets)", "Gonapinuwala", "Habaraduwa", "Hikkaduwa", "Imaduwa", "Karandeniya", "Nagoda", "Neluwa", "Niyagama", "Thawalama", "Welivitiya‑Divithura", "Yakkalamulla"],
+      "Matara": ["Akuressa", "Athuraliya", "Devinuwara", "Dickwella", "Hakmana", "Kamburupitiya", "Kirinda‑Puhuwella", "Kotapola", "Malimbada", "Matara", "Mulatiyana", "Pasgoda", "Pitabeddara", "Thihagoda", "Weligama", "Welipitiya"],
+      "Hambantota": ["Ambalantota", "Angunakolapelessa", "Beliatta", "Hambantota", "Katuwana", "Lunugamvehera", "Okewela", "Sooriyawewa", "Tangalle", "Thissamaharama", "Walasmulla", "Weeraketiya"],
+      "Jaffna": ["Delft", "Islands North (Kayts)", "Islands South (Velanai)", "Jaffna", "Karainagar", "Nallur", "Thenmarachchi (Chavakachcheri)", "Vadamarachchi East", "Vadamarachchi North", "Vadamarachchi South West", "Valikamam East", "North", "South", "South West", "West"],
+      "Kilinochchi": ["Kandavalai", "Karachchi", "Pachchilaipalli", "Poonakary"],
+      "Mannar": ["Madhu", "Mannar", "Manthai West", "Musali", "Nanaddan"],
+      "Mullaitivu": ["Mannar East", "Maritimepattu", "Oddusuddan", "Puthukudiyiruppu", "Thunukkai", "Welioya"],
+      "Vavuniya": ["Vavuniya", "Vavuniya North", "Vavuniya South", "Vengalacheddikulam"],
+      "Ampara": ["Addalachchenai", "Akkaraipattu", "Alayadiwembu", "Ampara", "Damana", "Dehiattakandiya", "Eragama", "Kalmunai", "Karativu", "Lahugala", "Mahaoya", "Navithanveli", "Ninthavur", "Padiyathalawa", "Pothuvil", "Sainthamarathu", "Samanthurai", "Thirukkovil", "Uhana"],
+      "Batticaloa": ["Eravur Pattu", "Eravur Town", "Kattankudy", "Koralai Pattu", "Koralai Pattu Central", "Koralai Pattu North", "Koralai Pattu South", "Koralai Pattu West", "Manmunai North", "Manmunai Pattu", "Manmunai S. & Eruvil Pattu", "Manmunai South West", "Manmunai West", "Porativu Pattu"],
+      "Trincomalee": ["Gomarankadawala", "Kantalai", "Kinniya", "Kuchchaveli", "Morawewa", "Muttur", "Padavi Sri Pura", "Seruvila", "Thambalagamuwa", "Trincomalee", "Verugal"],
+      "Anuradhapura": ["Anuradhapura", "Galnewa", "Galenbindunuwewa", "Horowpothana", "Ipalogama", "Kahatagasdigiliya", "Kebithigollewa", "Kekirawa", "Mahavilachchiya", "Medawachchiya", "Mihinthale", "Nachchadoowa", "Nochchiyagama", "Nuwaragam Palatha Central", "Nuwaragam Palatha East", "Padaviya", "Palagala", "Palugaswewa", "Rajanganaya", "Rambewa", "Thalawa", "Thambuttegama", "Thirappane"],
+      "Polonnaruwa": ["Dimbulagala", "Elahera", "Hingurakgoda", "Lankapura", "Medirigiriya", "Thamankaduwa", "Welikanda"],
+      "Badulla": ["Badulla", "Bandarawela", "Ella", "Haldummulla", "Hali‑Ela", "Haputale", "Kandaketiya", "Lunugala", "Mahiyanganaya", "Meegahakivula", "Passara", "Rideemaliyadda", "Soranathota", "Uva‑Paranagama", "Welimada"],
+      "Monaragala": ["Badalkumbura", "Bibile", "Buttala", "Katharagama", "Madulla", "Medagama", "Moneragala", "Sevanagala", "Siyambalanduwa", "Thanamalvila", "Wellawaya"],
+      "Kurunegala": ["Alawwa", "Ambanpola", "Bamunakotuwa", "Bingiriya", "Ehetuwewa", "Galgamuwa", "Ganewatta", "Giribawa", "Ibbagamuwa", "Katupotha", "Kobeigane", "Kotavehera", "Kuliyapitiya East", "Kuliyapitiya West", "Kurunegala", "Mahawa", "Mallawapitiya", "Maspotha", "Mawathagama", "Narammala", "Nikaweratiya", "Panduwasnuwara", "Pannala", "Polgahawela", "Polpithigama", "Rasnayakapura", "Rideegama", "Udubaddawa", "Wariyapola", "Weerambugedara"],
+      "Puttalam": ["Anamaduwa", "Arachchikattuwa", "Chilaw", "Dankotuwa", "Kalpitiya", "Karuwalagaswewa", "Madampe", "Mahakumbukkadawala", "Mahawewa", "Mundalama", "Nattandiya", "Nawagattegama", "Pallama", "Puttalam", "Vanathavilluwa", "Wennappuwa"],
+      "Kegalle": ["Aranayaka", "Bulathkohupitiya", "Dehiovita", "Deraniyagala", "Galigamuwa", "Kegalle", "Mawanella", "Rambukkana", "Ruwanwella", "Warakapola", "Yatiyanthota"],
+      "Ratnapura": ["Ayagama", "Balangoda", "Eheliyagoda", "Elapattha", "Embilipitiya", "Godakawela", "Imbulpe", "Kahawatta", "Kalawana", "Kiriella", "Kolonna", "Kuruvita", "Nivithigala", "Opanayaka", "Pelmadulla", "Ratnapura", "Weligepola"]
+    };
+
+    function populateGND(districtSelectId, gndSelectId) {
+      const district = document.getElementById(districtSelectId).value;
+      const gndSelect = document.getElementById(gndSelectId);
+
+      gndSelect.innerHTML = '<option value="" disabled selected>Select DSD</option>';
+      if (gndData[district]) {
+        gndData[district].forEach(gnd => {
+          const option = document.createElement("option");
+          option.value = gnd;
+          option.textContent = gnd;
+          gndSelect.appendChild(option);
+        });
+      }
+    }
+
+    document.getElementById("homeDistrict").addEventListener("change", () => {
+      populateGND("homeDistrict", "homeGND");
+    });
+
+    document.getElementById("destDistrict").addEventListener("change", () => {
+      populateGND("destDistrict", "destGND");
+    });
+  </script>
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <script src="script.js"></script>
+</body>
+</html>
