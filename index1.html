@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Infrastructure Information Dashboard</title>
+  <link rel="stylesheet" href="styles1.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header class="modern-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="fas fa-map-marked-alt"></i>
+      </div>
+      <div class="header-text">
+        <h1><strong>INFRASTRUCTURE INFORMATION DASHBOARD</strong></h1>
+        <p class="header-subtitle">This web map visualizes the current infrastructure of Sri Lanka, in oredr to support planning, development, and decision-making across the island.
+</p>
+      </div>
+    </div>
+    <div class="header-decoration"></div>
+  </header>
+
+  <div id="map-container" class="enhanced-container">
+    <div id="map" class="map-panel">
+      <div class="map-overlay">
+        <div class="loading-spinner" id="map-loader">
+          <i class="fas fa-spinner fa-spin"></i>
+        </div>
+      </div>
+    </div>
+    
+    <div id="sidebar" class="enhanced-sidebar">
+      <div class="sidebar-header">
+        <i class="fas fa-sliders-h sidebar-icon"></i>
+        <h2>CONTROL PANEL</h2>
+      </div>
+      
+      <div class="sidebar-intro">
+        <p><i class="fas fa-info-circle"></i> Use the layer switcher to turn on the information you want to see. From roads to rainfall, click and reveal the data that matters to you!</p>
+      </div>
+
+      <div id="layer-controls" class="control-section">
+        <div class="section-header">
+          <i class="fas fa-layer-group"></i>
+          <h3>DATA LAYERS</h3>
+        </div>
+        <div class="radio-group">
+          <label class="radio-card active">
+            <input type="radio" name="layer" value="vocational" checked>
+            <div class="radio-content">
+              <i class="fas fa-graduation-cap radio-icon"></i>
+              <span>VOCATIONAL TRAINING INSTITUTIONS</span>
+            </div>
+            <div class="radio-indicator"></div>
+          </label>
+          
+          <label class="radio-card">
+            <input type="radio" name="layer" value="educational">
+            <div class="radio-content">
+              <i class="fas fa-school radio-icon"></i>
+              <span>EDUCATIONAL INSTITUTIONS</span>
+            </div>
+            <div class="radio-indicator"></div>
+          </label>
+          
+          <label class="radio-card">
+            <input type="radio" name="layer" value="health">
+            <div class="radio-content">
+              <i class="fas fa-hospital radio-icon"></i>
+              <span>HEALTH RELATED INSTITUTIONS</span>
+            </div>
+            <div class="radio-indicator"></div>
+          </label>
+        </div>
+      </div>
+
+      <div id="legend" class="control-section">
+        <div class="section-header">
+          <i class="fas fa-map-signs"></i>
+          <h3>LEGEND</h3>
+        </div>
+        <div id="legend-content" class="legend-items"></div>
+      </div>
+
+      <div id="search-container" class="control-section">
+        <div class="section-header">
+          <i class="fas fa-search"></i>
+          <h3>LOCATION SEARCH</h3>
+        </div>
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="Search location...">
+          <button id="search-btn" class="search-button">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="distance-tools" class="control-section">
+        <div class="section-header">
+          <i class="fas fa-ruler"></i>
+          <h3>DISTANCE CALCULATOR</h3>
+        </div>
+        <div class="tool-buttons">
+          <button id="start-distance" class="tool-btn primary">
+            <i class="fas fa-play"></i>
+            Start Measuring
+          </button>
+          <button id="undo-point" class="tool-btn secondary">
+            <i class="fas fa-undo"></i>
+            Undo Point
+          </button>
+        </div>
+        <div id="distance-result" class="distance-display"></div>
+      </div>
+      
+    </div>
+  </div>
+
+  <footer class="modern-footer">
+    <div class="footer-content">
+      <div class="footer-left">
+        <i class="fas fa-university"></i>
+        <span>&copy; 2025 | Department of Town & Country Planning</span>
+      </div>
+      <div class="footer-right">
+        <span>PL3508 - Advanced GIS and Remote Sensing for Planning</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script1.js"></script>
+<script
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDsN7J03AHNWg12WMLSG9ubnmX_X-YekBU&libraries=places&callback=initGoogle"
+  async defer></script>
+
+</body>
+</html>
