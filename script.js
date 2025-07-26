@@ -527,7 +527,7 @@ console.log('Active layer:', 'layer1 (Internal Retention Rate)');
 
           // 4) after a short pause, go to your Infrastructure dashboard
           setTimeout(() => {
-            window.location.href = 'C:/Users/kavis/OneDrive/Documents/3rd Year Sem 05/Advanced/Assiignment - Web Mapping/Final Touch/Infrastructure/index1.html';
+            window.location.href = 'index1.html';
           }, 500);
         }
 
